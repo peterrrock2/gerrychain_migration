@@ -7,10 +7,15 @@ requires-python = ">=3.12"
 dependencies = [
     "geopandas>=1.1.2",
     "gerrychain",
-    "ipykernel>=7.1.0",
-    "ipython>=9.9.0",
+    "matplotlib>=3.10.8",
     "pandas>=3.0.0",
 ]
 
 [tool.uv.sources]
 gerrychain = { git = "https://github.com/mggg/gerrychain", rev = "6be065d0dad4a1f5ddd38e35d334e5374b5d264b" }
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+    "ipython>=9.9.0",
+]
