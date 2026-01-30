@@ -11,10 +11,38 @@ who need to migrate code from versions prior to 1.0.0 that relied on `Graph` bei
 | Old pattern                        | New pattern                                                   |
 | ---------------------------------- | ------------------------------------------------------------- |
 | `g.nodes[n][k]`                    | `g.node_data(n)[k]`                                           |
-| `g.edges[u, v][k]`                 | `eid = g.get_edge_id_from_edge((u,v)); g.edge_data(eid)[k]`   |
-| `for n in g.nodes:`                | `for n in g:` or `for n in g.node_indices:`                   |
+| `g.edges[u, v][k]`                 | `g.edge_data((u,v))[k]`                                       |
 | `nx.alg(g)`                        | `nx.alg(g.get_nx_graph())` or `nx.alg(g.to_networkx_graph())` |
 | `sub = g.subgraph(S)` (assume IDs) | `sub = g.subgraph(S)` then translate results if RX-backed     |
+
+
+## New features
+
+There are a lot of new convenience methods on `Graph` that work regardless of backend:
+
+| New Method                                                      | Description                                                                                                |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Graph.from_networkx(nx_graph)`                                 | Wrap a user-created `networkx.Graph` as a GerryChain `Graph` (NX-backed).                                  |
+| `Graph.from_json(path)`                                         | Load a graph from NetworkX adjacency JSON (NX-backed wrapper).                                             |
+| `Graph.nodes`                                                   | List of node IDs (legacy-friendly; good for iteration/printing).                                           |
+| `Graph.edges`                                                   | Set of edge endpoint tuples `(u, v)` (portable across backends).                                           |
+| `Graph.node_indices`                                            | Set of node IDs (NX labels or RX integer ids).                                                             |
+| `Graph.edge_indices`                                            | Set of edge IDs (NX: `(u,v)`; RX: integer edge indices).                                                   |
+| `Graph.neighbors(node_id)`                                      | Neighbor node IDs as a list (portable across backends).                                                    |
+| `Graph.degree(node_id)`                                         | Degree of a node (portable across backends).                                                               |
+| `Graph.node_data(node_id)`                                      | Node attribute dict (portable; replacement for `graph.nodes[n][...]`).                                     |
+| `Graph.edge_data(edge_id)`                                      | Edge attribute dict (portable; replacement for `graph.edges[u,v][...]`).                                   |
+| `Graph.get_edge_id_from_edge((u, v))`                           | Convert an edge tuple into an “edge id” (NX: returns tuple; RX: returns integer edge index).               |
+| `Graph.get_edge_from_edge_id(edge_id)`                          | Convert an “edge id” back into an edge tuple `(u, v)` (NX no-op; RX looks up endpoints).                   |
+| `Graph.subgraph(nodes)`                                         | Create a subgraph wrapper. **Note:** RX subgraphs renumber nodes, so translate results back.               |
+| `Graph.num_connected_components()`                              | Count connected components.                                                                                |
+| `Graph.laplacian_matrix()`                                      | Return the (sparse) Laplacian matrix (portable across backends).                                           |
+| `Graph.normalized_laplacian_matrix()`                           | Return the (sparse) normalized Laplacian matrix (portable across backends).                                |
+| `Graph.minimum_spanning_tree_from_edge_weight(attr)`            | Compute a minimum spanning tree using edge weight attribute `attr` (portable across backends).             |
+| `Graph.islands`                                                 | Set of degree-0 nodes (often used for validation/warnings).                                                |
+
+For a full list of new methods, see [New convenience functions](#new-convenience-functions) at
+the end of this document.
 
 ---
 
@@ -313,3 +341,158 @@ Geometry handling stays the same conceptually:
 
 ---
 
+# New convenience functions
+
+
+## Construction / conversion
+
+- `Graph.from_null_networkx()`
+  - Create an empty `Graph` with an embedded empty `networkx.Graph`.
+
+- `Graph.from_rustworkx(rx_graph)`
+  - Wrap a `rustworkx.PyGraph` as a GerryChain `Graph`.
+
+- `Graph.to_networkx_graph()`
+  - Return an equivalent `networkx.Graph` (rebuilds one if RX-backed).
+
+- `Graph.convert_from_nx_to_rx()`
+  - Convert an NX-backed `Graph` to an RX-backed `Graph` (creates id maps).
+
+- `Graph.get_nx_to_rx_node_id_map()`
+  - Return dict mapping original NX `node_id -> RX node_id` (only when RX-backed).
+
+## Backend detection / accessors
+
+- `Graph.is_nx_graph()`
+  - `True` if embedded graph is NetworkX.
+
+- `Graph.is_rx_graph()`
+  - `True` if embedded graph is RustworkX.
+
+- `Graph.get_nx_graph()`
+  - Return embedded `networkx.Graph` (NX-only).
+
+- `Graph.get_rx_graph()`
+  - Return embedded `rustworkx.PyGraph` (RX-only).
+
+## Node / edge ID conveniences
+
+- `Graph.node_indices` *(property)*
+  - Set of node IDs (NX labels or RX integer ids).
+
+- `Graph.edge_indices` *(property)*
+  - Set of edge IDs (NX: `(u, v)` tuples; RX: integer edge indices).
+
+- `Graph.nodes` *(property)*
+  - List of node IDs (legacy-friendly).
+
+- `Graph.edges` *(property)*
+  - Set of edge endpoint tuples `(u, v)`, even when RX-backed.
+
+- `Graph.get_edge_from_edge_id(edge_id)`
+  - Convert `edge_id -> (u, v)` tuple (NX no-op; RX uses endpoints lookup).
+
+- `Graph.get_edge_id_from_edge((u, v))`
+  - Convert `(u, v) -> edge_id` (NX returns `(u, v)`; RX returns integer edge index).
+
+## Data access (backend-agnostic replacement for `graph.nodes[...]` / `graph.edges[...]`)
+
+- `Graph.node_data(node_id)`
+  - Return the node attribute dict for `node_id` (works for NX and RX).
+
+- `Graph.edge_data(edge_id)`
+  - Return the edge attribute dict for `edge_id` (works for NX and RX).
+
+## Traversal / structure helpers
+
+- `Graph.neighbors(node_id)`
+  - List of neighbor node IDs (NX and RX).
+
+- `Graph.degree(node_id)`
+  - Degree of `node_id` (NX and RX).
+
+- `Graph.islands` *(property)*
+  - Set of node IDs with degree 0.
+
+- `Graph.is_directed()`
+  - Always `False` (compat with generic algorithms).
+
+- `Graph.subgraph(nodes)`
+  - Return a subgraph `Graph`.
+  - **Note:** in RX, node IDs are renumbered; maps are created to translate back.
+
+- `Graph.translate_subgraph_node_ids_for_flips(flips)`
+  - Translate `{subgraph_node_id: part} -> {parent_node_id: part}`.
+
+- `Graph.translate_subgraph_node_ids_for_set_of_nodes(set_of_nodes)`
+  - Translate node IDs in a set from subgraph context -> parent context.
+
+- `Graph.subgraphs_for_connected_components()`
+  - Return `list[Graph]`, one per connected component.
+
+- `Graph.num_connected_components()`
+  - Return number of connected components.
+
+- `Graph.is_a_tree()`
+  - Return whether graph is a tree (NX uses `networkx.is_tree`; RX checks edges/nodes/CCs).
+
+## BFS conveniences
+
+- `Graph._generic_bfs_edges(source)`
+  - Generator yielding BFS edges `(parent, child)`.
+
+- `Graph.generic_bfs_successors_generator(root_node_id)`
+  - Generator yielding `(parent, [children...])` in BFS order.
+
+- `Graph.generic_bfs_successors(root_node_id)`
+  - Dict `{parent: [children...]}` using generic BFS.
+
+- `Graph.generic_bfs_predecessors(root_node_id)`
+  - Dict `{node: parent}` using generic BFS.
+
+- `Graph.predecessors(root_node_id)`
+  - Backend-aware: uses `networkx.bfs_predecessors` for NX; generic BFS for RX.
+
+- `Graph.successors(root_node_id)`
+  - Backend-aware: uses `networkx.bfs_successors` for NX; generic BFS for RX.
+
+## Linear algebra conveniences
+
+- `Graph.laplacian_matrix()`
+  - SciPy sparse Laplacian matrix (NX or RX implementation).
+
+- `Graph.normalized_laplacian_matrix()`
+  - SciPy sparse normalized Laplacian (NX or RX implementation).
+
+## Algorithm wrappers
+
+- `Graph.minimum_spanning_tree_from_edge_weight(edge_weight_attribute_name)`
+  - Compute MST using NX or RX backend; return as `Graph`.
+
+## Node ID translation / labeling helpers
+
+- `Graph.original_nx_node_id_for_internal_node_id(internal_node_id)`
+  - Map internal (especially RX) node id -> original NX label.
+
+- `Graph.original_nx_node_ids_for_set(set_of_node_ids)`
+  - Bulk map set of internal ids -> original NX labels.
+
+- `Graph.original_nx_node_ids_for_list(list_of_node_ids)`
+  - Bulk map list of internal ids -> original NX labels.
+
+- `Graph.internal_node_id_for_original_nx_node_id(original_nx_node_id)`
+  - Reverse mapping: original NX label -> current internal node id.
+
+## Compatibility dunders / passthrough
+
+- `Graph.__len__()`
+  - Number of nodes.
+
+- `Graph.__iter__()`
+  - Iterate node IDs.
+
+- `Graph.__getitem__(...)`
+  - Only for NX-backed graphs (delegates to embedded NX graph).
+
+- `Graph.__getattr__(name)`
+  - Pass-through to embedded NX/RX graph when attribute not on wrapper.
