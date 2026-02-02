@@ -4,6 +4,16 @@ This is a quick “what changed / what to do instead” guide for users of Gerry
 who need to migrate code from versions prior to 1.0.0 that relied on `Graph` being a subclass of 
 `networkx.Graph`.
 
+> :warning: The following access patterns have been deprecated on the new `Graph` class:
+> 
+> * `graph.nodes()`
+> * `graph.edges()`
+> 
+> These previously allowed you to access a list of node labels or node data. The proper syntax 
+> now is to use `graph.nodes` for a list of labels and `graph.node_data(n)` to get the data
+> dictionary of a particular node.
+
+
 ---
 
 ## “Old → New” quick replacements
