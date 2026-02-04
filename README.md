@@ -4,18 +4,64 @@ This is a quick “what changed / what to do instead” guide for users of Gerry
 who need to migrate code from versions prior to 1.0.0 that relied on `Graph` being a subclass of 
 `networkx.Graph`.
 
-> :warning: The following access patterns have been deprecated on the new `Graph` class:
-> 
-> * `graph.nodes()`
-> * `graph.edges()`
-> 
-> These previously allowed you to access a list of node labels or node data. The proper syntax 
-> now is to use `graph.nodes` for a list of labels and `graph.node_data(n)` to get the data
-> dictionary of a particular node.
+## :WARNING: Deprecated access patterns
 
+The following access patterns have been deprecated on the new `Graph` class:
+
+* `graph.nodes()`
+* `graph.edges()`
+
+These previously allowed you to access a list of node labels or node data. The proper syntax 
+now is to use `graph.nodes` for a list of labels and `graph.node_data(n)` to get the data
+dictionary of a particular node.
+
+# Mild API Changes
+
+- Some of the partitioning functions have been moved around
+    - `tree.recursive_tree_part` is now `partition.recursive_tree_part`
+    - `tree.recursive_seed_part` is now `partition.recursive_seed_part`
+
+- Some parameters to existing functions have changed to make them more explicit
+    - The parameter `method` has changed to `bipartition_tree_fn` in the following functions:
+        - `recom`
+        - `Partition.from_random_assignment`
+        - `recursive_tree_part`
+        - `recursive_seed_part`
+        - `recursive_seed_part_inner`
+        - `epsilon_tree_bipartition`
+        - `get_seed_chunks`
+    - The parameter `choice` has changed to `root_choice_fn` in the following functions:
+        - `reversible_recom`
+        - `uniform_spanning_tree`
+        - `find_balanced_edge_cuts_contraction`
+        - `find_balanced_edge_cuts_memoization`
+    - The parameter `cut_choice` has changed to `cut_choice` in the following functions:
+        - `bipartition_tree`
+
+
+# Changes to the Graph class
+
+**Table of Contents**
+
+- [“Old → New” quick replacements](#old--new-quick-replacements)
+- [New features](#new-features)
+- [1) Big conceptual change](#1-big-conceptual-change)
+- [2) Graph construction](#2-graph-construction)
+- [3) “Is it NX or RX?” and getting the underlying graph](#3-is-it-nx-or-rx-and-getting-the-underlying-graph)
+- [4) Nodes and edges: views vs IDs](#4-nodes-and-edges-views-vs-ids)
+- [5) Node attributes access](#5-node-attributes-access-most-common-break)
+- [6) Edge attributes access](#6-edge-attributes-access--edge-ids-second-most-common-break-but-unlikely-to-be-noticed)
+- [7) Neighbors / degree](#7-neighbors--degree-now-explicit-methods)
+- [8) Subgraphs](#8-subgraphs-major-semantic-change-in-rx)
+- [9) BFS helpers](#9-bfs-helpers-stable-across-backends)
+- [10) Laplacians and matrices](#10-laplacians-and-matrices)
+- [11) MST wrapper](#11-mst-wrapper)
+- [12) JSON serialization](#12-json-serialization)
+- [13) Common migration pitfalls](#13-common-migration-pitfalls)
 
 ---
 
+<a id="old--new-quick-replacements"></a>
 ## “Old → New” quick replacements
 
 | Old pattern                        | New pattern                                                   |
@@ -26,6 +72,9 @@ who need to migrate code from versions prior to 1.0.0 that relied on `Graph` bei
 | `sub = g.subgraph(S)` (assume IDs) | `sub = g.subgraph(S)` then translate results if RX-backed     |
 
 
+---
+
+<a id="new-features"></a>
 ## New features
 
 There are a lot of new convenience methods on `Graph` that work regardless of backend:
@@ -56,6 +105,7 @@ the end of this document.
 
 ---
 
+<a id="1-big-conceptual-change"></a>
 ## 1) Big conceptual change
 
 ### Old
@@ -81,6 +131,7 @@ the end of this document.
 
 ---
 
+<a id="2-graph-construction"></a>
 ## 2) Graph construction
 
 ### Old
@@ -104,6 +155,7 @@ g = Graph.from_geodataframe(gdf)       # NX-backed Graph
 
 ---
 
+<a id="3-is-it-nx-or-rx-and-getting-the-underlying-graph"></a>
 ## 3) “Is it NX or RX?” and getting the underlying graph
 
 ### New
@@ -124,6 +176,7 @@ but it should be unnecessary to use the latter in almost every case.
 
 ---
 
+<a id="4-nodes-and-edges-views-vs-ids"></a>
 ## 4) Nodes and edges: views vs IDs
 
 ### Old
@@ -155,6 +208,7 @@ g.edge_indices   # set of edge IDs (NX: edge tuples, RX: integer edge indices)
 
 ---
 
+<a id="5-node-attributes-access"></a>
 ## 5) Node attributes access (most common break)
 
 ### Old
@@ -179,6 +233,7 @@ g.get_nx_graph().nodes[n]["population"]
 
 ---
 
+<a id="6-edge-attributes-access--edge-ids-second-most-common-break-but-unlikely-to-be-noticed"></a>
 ## 6) Edge attributes access + edge IDs (second most common break, but unlikely to be noticed)
 
 In NX, an “edge id” is basically `(u, v)`.
@@ -202,6 +257,7 @@ w = g.edges[u, v]["weight"]
 
 ---
 
+<a id="7-neighbors--degree-now-explicit-methods"></a>
 ## 7) Neighbors / degree (now explicit methods)
 
 ### Old
@@ -222,6 +278,7 @@ These work for both NX and RX-backed graphs.
 
 ---
 
+<a id="8-subgraphs"></a>
 ## 8) Subgraphs: major semantic change in RX
 
 ### Old (NetworkX)
@@ -260,6 +317,7 @@ orig = g.original_nx_node_id_for_internal_node_id(internal_id)
 
 ---
 
+<a id="9-bfs-helpers-stable-across-backends"></a>
 ## 9) BFS helpers (stable across backends)
 
 Prefer these over raw `networkx.bfs_*` calls:
@@ -272,6 +330,7 @@ pred2 = g.generic_bfs_predecessors(root)  # always generic implementation
 
 ---
 
+<a id="10-laplacians-and-matrices"></a>
 ## 10) Laplacians and matrices
 
 ### Old
@@ -291,6 +350,7 @@ These return SciPy sparse arrays and work for both backends (with separate imple
 
 ---
 
+<a id="11-mst-wrapper"></a>
 ## 11) MST wrapper
 
 ### New
@@ -303,6 +363,7 @@ Works for both NX and RX; returns a new `Graph`.
 
 ---
 
+<a id="12-json-serialization"></a>
 ## 12) JSON serialization
 
 ### Old
@@ -331,6 +392,7 @@ Geometry handling stays the same conceptually:
 
 ---
 
+<a id="13-common-migration-pitfalls"></a>
 ## 13) Common migration pitfalls
 
 1. **Using `g.nodes[...]` / `g.edges[...]`**
